@@ -12,32 +12,34 @@ URL = "http://programmer100.pythonanywhere.com/tours/"
 connection = sqlite3.connect("data.db")
 
 
-def scrape(url):
-    """Scrape the page source from the URL"""
-    response = requests.get(url)
-    source = response.text
-    return source
+class Event:
+
+    def scrape(self, url):
+        """Scrape the page source from the URL"""
+        response = requests.get(url)
+        source = response.text
+        return source
+
+    def extract(self, source):
+        extractor = selectorlib.Extractor.from_yaml_file("extract.yaml")
+        value = extractor.extract(source)["tours"]
+        return value
 
 
-def extract(source):
-    extractor = selectorlib.Extractor.from_yaml_file("extract.yaml")
-    value = extractor.extract(source)["tours"]
-    return value
+class Email:
+    def send(self,message):
+        host = "smtp.gmail.com"
+        port = 465
 
+        username = creds.getusername()
+        password = creds.get_password()
+        receiver = creds.get_receiver()
 
-def send_email(message):
-    host = "smtp.gmail.com"
-    port = 465
+        context = ssl.create_default_context()
 
-    username = creds.getusername()
-    password = creds.get_password()
-    receiver = creds.get_receiver()
-
-    context = ssl.create_default_context()
-
-    with smtplib.SMTP_SSL(host, port, context=context) as server:
-        server.login(username, password)
-        server.sendmail(username, receiver, message)
+        with smtplib.SMTP_SSL(host, port, context=context) as server:
+            server.login(username, password)
+            server.sendmail(username, receiver, message)
 
 
 def store(extracted):
@@ -60,13 +62,15 @@ def read(extracted):
 
 if __name__ == "__main__":
     while True:
-        scraped = (scrape(URL))
-        extracted = extract(scraped)
+        event = Event()
+        scraped = event.scrape(URL)
+        extracted = event.extract(scraped)
         print(extracted)
 
         if extracted != "No upcoming tours":
             row = read(extracted)
             if not row:
                 store(extracted)
-                send_email(message=f"Hey, New event was found \n {extracted}")
+                email = Email()
+                email.send(message=f"Hey, New event was found \n {extracted}")
         time.sleep(2)
