@@ -9,8 +9,6 @@ import sqlite3
 
 URL = "http://programmer100.pythonanywhere.com/tours/"
 
-connection = sqlite3.connect("data.db")
-
 
 class Event:
 
@@ -27,7 +25,7 @@ class Event:
 
 
 class Email:
-    def send(self,message):
+    def send(self, message):
         host = "smtp.gmail.com"
         port = 465
 
@@ -42,22 +40,26 @@ class Email:
             server.sendmail(username, receiver, message)
 
 
-def store(extracted):
-    row = extracted.split(",")
-    row = [item.strip() for item in row]
-    curser = connection.cursor()
-    curser.execute("INSERT INTO EVENTS VALUES(?,?,?)", row)
-    connection.commit()
+class Database:
 
+    def __init__(self, database_path):
+        self.connection = sqlite3.connect(database_path)
 
-def read(extracted):
-    row = extracted.split(",")
-    row = [item.strip() for item in row]
-    band, city, date = row
-    curser = connection.cursor()
-    curser.execute("Select * from events where band = ? and city = ? and date = ?", (band, city, date))
-    rows = curser.fetchall()
-    return rows
+    def store(self, extracted):
+        row = extracted.split(",")
+        row = [item.strip() for item in row]
+        curser = self.connection.cursor()
+        curser.execute("INSERT INTO EVENTS VALUES(?,?,?)", row)
+        self.connection.commit()
+
+    def read(self, extracted):
+        row = extracted.split(",")
+        row = [item.strip() for item in row]
+        band, city, date = row
+        curser = self.connection.cursor()
+        curser.execute("Select * from events where band = ? and city = ? and date = ?", (band, city, date))
+        rows = curser.fetchall()
+        return rows
 
 
 if __name__ == "__main__":
@@ -68,9 +70,10 @@ if __name__ == "__main__":
         print(extracted)
 
         if extracted != "No upcoming tours":
-            row = read(extracted)
+            database = Database(database_path="data.db")
+            row = database.read(extracted)
             if not row:
-                store(extracted)
+                database.store(extracted)
                 email = Email()
                 email.send(message=f"Hey, New event was found \n {extracted}")
         time.sleep(2)
